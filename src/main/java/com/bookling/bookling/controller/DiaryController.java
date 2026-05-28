@@ -59,7 +59,7 @@ public class DiaryController {
     @DeleteMapping("/{id}")
     public Long delete(@PathVariable Long id) {
         diaryService.delete(id);
-        return id; // 삭제된 id를 반환합니다.
+        return id; // 삭제된 id를 반환
     }
 
     // Controller에 검색 API 연결

@@ -21,6 +21,11 @@ public class UserHistory {
     // 어떤 사용자의 기록인지 구분
     private Long userId;
 
+    // User 엔티티와 M:1 관계 구축
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false) // 연동 시 유저 정보는 필수이므로 false
+    private User user;
+
     // 일기와의 연동 고리
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diary_id", nullable = true)

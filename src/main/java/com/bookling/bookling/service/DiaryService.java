@@ -32,99 +32,148 @@ public class DiaryService {
     private final UserHistoryRepository userHistoryRepository;
     private final RestTemplate restTemplate;
 
+    //[활동 2] 일기 작성 및 AI 분석 추천 흐름 (안전성 강화 버전)
     @Transactional
     public AiRecommendResponseDto saveDiaryWithAiAndHistory(RecommendRequestDto dto) {
-
-        // 1. 유저가 존재하는지 검증 (없으면 404 예외 처리)
+        // 1. 유저가 존재하는지 검증
         User user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다. ID: " + dto.getUserId()));
 
-        // 2. 파이썬 FastAPI AI 추천 서버(ngrok) 가동 주소
         String ngrokUrl = "https://wrecking-aptitude-wrongly.ngrok-free.dev/recommend/similarity/gemini";
-
         Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("text", dto.getContent()); // AI 서버 스펙에 맞게 일기 본문 세팅
+        requestBody.put("text", dto.getContent());
 
         String emotionResult = "분석 실패";
         List<AiBookResponseDto> recommendedBooks = List.of();
 
         try {
-            // AI 서버로 추천 결과(감정 + 책 목록) 수신
+            // AI 서버로 추천 결과 수신
             AiRecommendResponseDto aiResponse = restTemplate.postForObject(ngrokUrl, requestBody, AiRecommendResponseDto.class);
 
             if (aiResponse != null) {
-                emotionResult = aiResponse.getEmotion();   // 감정 라벨
-                recommendedBooks = aiResponse.getBooks();  // 추천된 도서 목록 배열
+                emotionResult = aiResponse.getEmotion();
+                recommendedBooks = aiResponse.getBooks();
             }
+
+            // [정상 흐름] AI 분석 성공 시 정상 적재
+            Diary diary = new Diary();
+            diary.setTitle(dto.getTitle());
+            diary.setContent(dto.getContent());
+            diary.setEmotion(emotionResult);
+            diaryRepository.save(diary);
+
+            if (recommendedBooks != null && !recommendedBooks.isEmpty()) {
+                for (AiBookResponseDto book : recommendedBooks) {
+                    UserHistory history = UserHistory.builder()
+                            .user(user)
+                            .diary(diary)
+                            .emotion(emotionResult)
+                            .bookId(book.getId())
+                            .build();
+                    userHistoryRepository.save(history);
+                }
+                userHistoryRepository.flush();
+            }
+
         } catch (Exception e) {
-            // AI 서버가 꺼져있거나 예외가 발생했을 때 방어막 구축
-            System.out.println("AI 서버 통신 실패: " + e.getMessage() + " (기본 분석 값으로 진행합니다.)");
-        }
+            System.out.println("🚨 AI 서버 통신 실패: " + e.getMessage() + " (일반 백업 저장 흐름으로 전환합니다.)");
 
-        // 3. AI가 분석해준 감정 결과와 함께 DB에 Diary 최종 저장
-        Diary diary = new Diary();
-        diary.setTitle(dto.getTitle());
-        diary.setContent(dto.getContent());
-        diary.setEmotion(emotionResult);
-        diaryRepository.save(diary);
+            // 1. 일기 본문 백업 저장
+            Diary backupDiary = new Diary();
+            backupDiary.setTitle(dto.getTitle());
+            backupDiary.setContent(dto.getContent());
+            backupDiary.setEmotion("분석 실패");
+            diaryRepository.save(backupDiary);
 
-        // 4. 추천된 여러 권의 책 ID를 반복문 돌며 UserHistory 테이블에 각각 한 줄씩 전부 연동 저장
-        if (recommendedBooks != null && !recommendedBooks.isEmpty()) {
-            for (AiBookResponseDto book : recommendedBooks) {
-
-                // 루프가 돌 때마다 완전히 새로운 객체를 "뉴(new)" 생성하여 덮어쓰기 방지
-                UserHistory history = UserHistory.builder()
-                        .user(user)
-                        .diary(diary)
-                        .emotion(emotionResult)
-                        .bookId(book.getId())
-                        .build();
-
-                // 각 책 ID마다 데이터베이스에 즉시 insert 쿼리가 발사되도록 영속화
-                userHistoryRepository.save(history);
-            }
+            // 2. AI는 실패했지만 유저 활동 히스토리에 '분석 실패' 상태로 흔적 남기기
+            UserHistory backupHistory = UserHistory.builder()
+                    .user(user)
+                    .diary(backupDiary)
+                    .emotion("분석 실패")
+                    .bookId(null)
+                    .build();
+            userHistoryRepository.save(backupHistory);
             userHistoryRepository.flush();
         }
 
-        // 5. 안드로이드 앱 화면에 결과 팝업(추천 도서 리스트)을 바로 띄울 수 있게 AI 응답 스펙 그대로 리턴
         return new AiRecommendResponseDto(dto.getContent(), emotionResult, recommendedBooks);
     }
 
-    // 일반 저장 기능 (AI 미연동 백업용)
+    //[활동 1] 오직 감정만 선택했을 때의 AI 도서 추천 및 히스토리 저장 흐름 (최후의 방어선 탑재)
     @Transactional
-    public Long save(Long userId, DiaryRequestDto requestDto) {
+    public AiRecommendResponseDto saveEmotionAndGetRecommend(Long userId, String emotion) {
+        // 1. 유저 검증
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다. ID: " + userId));
 
-        Diary diary = new Diary();
-        diary.setTitle(requestDto.getTitle());
-        diary.setContent(requestDto.getContent());
+        // 2. 파이썬 FastAPI AI 추천 서버 주소 (현재 에러 로그에 찍힌 주소)
+        String ngrokUrl = "https://wrecking-aptitude-wrongly.ngrok-free.dev/recommend/emotion";
 
-        return diaryRepository.save(diary).getId();
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("emotion", emotion);
+
+        List<AiBookResponseDto> recommendedBooks = List.of();
+        boolean isAiSuccess = false;
+
+        try {
+            // AI 서버로 추천 결과 수신 시도
+            AiRecommendResponseDto aiResponse = restTemplate.postForObject(ngrokUrl, requestBody, AiRecommendResponseDto.class);
+            if (aiResponse != null) {
+                recommendedBooks = aiResponse.getBooks();
+                isAiSuccess = true;
+            }
+        } catch (Exception e) {
+            //  ngrok 오프라인 에러 포획 문두
+            System.out.println("🚨 AI 서버 추천 실패(오프라인): " + e.getMessage() + " -> 감정 선택 기록 단독 백업을 가동합니다.");
+        }
+
+        // 3. 데이터베이스 적재 분기 처리
+        if (isAiSuccess && recommendedBooks != null && !recommendedBooks.isEmpty()) {
+            // [정상 흐름] AI 터널이 정상적으로 열려 있어서 책 추천 목록을 받아왔을 때
+            for (AiBookResponseDto book : recommendedBooks) {
+                UserHistory history = UserHistory.builder()
+                        .user(user)
+                        .diary(null)
+                        .emotion(emotion)
+                        .bookId(book.getId())
+                        .build();
+                userHistoryRepository.save(history);
+            }
+        } else {
+            // 책 목록 없을 시 감정만 저장
+            UserHistory fallbackHistory = UserHistory.builder()
+                    .user(user)
+                    .diary(null)          // 일기 없음
+                    .emotion(emotion)     // 사용자가 선택한 감정 (예: '슬픔')
+                    .bookId(null)         // 추천 도서가 없으므로 null 매핑
+                    .build();
+            userHistoryRepository.save(fallbackHistory);
+        }
+
+        userHistoryRepository.flush();
+
+        return new AiRecommendResponseDto(null, emotion, recommendedBooks);
     }
 
-    // 전체 조회 - 특정 유저 일기 목록
+    // 💡 아래 기존 조회/수정/삭제 단순 CRUD 메서드들은 완벽히 보존 (변경 없음)
     public List<DiaryResponseDto> findAllByUserId(Long userId) {
         return diaryRepository.findAll().stream()
                 .map(DiaryResponseDto::new)
                 .collect(Collectors.toList());
     }
 
-    // 전체 조회
     public List<DiaryResponseDto> findAll() {
         return diaryRepository.findAll().stream()
                 .map(DiaryResponseDto::new)
                 .collect(Collectors.toList());
     }
 
-    // 상세 조회
     public DiaryResponseDto findById(Long id) {
         Diary entity = diaryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 일기가 없습니다. id=" + id));
         return new DiaryResponseDto(entity);
     }
 
-    // 수정 기능
     @Transactional
     public Long update(Long id, DiaryRequestDto requestDto) {
         Diary diary = diaryRepository.findById(id)
@@ -134,7 +183,6 @@ public class DiaryService {
         return id;
     }
 
-    // 삭제 기능
     @Transactional
     public void delete(Long id) {
         Diary diary = diaryRepository.findById(id)
@@ -142,7 +190,6 @@ public class DiaryService {
         diaryRepository.delete(diary);
     }
 
-    // 날짜 및 제목 검색
     public List<Diary> searchDiaries(String keyword, LocalDateTime start, LocalDateTime end) {
         if (keyword != null && start != null && end != null) {
             return diaryRepository.findByTitleContainingAndCreatedAtBetween(keyword, start, end);

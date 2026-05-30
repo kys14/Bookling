@@ -37,5 +37,5 @@ public class UserHistory {
 
     @CreatedDate
     @Column(name = "created_at", updatable = false, nullable = false)
-    private LocalDateTime createdAt;;
+    private LocalDateTime createdAt;
 }

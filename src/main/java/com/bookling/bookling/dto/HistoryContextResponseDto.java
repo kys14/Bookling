@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class HistoryContextResponseDto {
-    private Long temporaryBookId;
+    private Long bookId;
     private String emotion;
     private Long diaryId;
     private String diaryTitle;

@@ -18,9 +18,8 @@ public class UserHistoryService {
 
     private final UserHistoryRepository userHistoryRepository;
 
-    // 특정 도서 ID로 연동된 과거 활동 기록(일기 문맥) 조회
+    // 특정 도서 ID 연동 과거 활동 기록(일기 문맥) 조회
     public List<HistoryContextResponseDto> getContextByBookId(Long bookId) {
-        // 💡 findByTemporaryBookId -> findByBookId로 변경
         List<UserHistory> histories = userHistoryRepository.findByBookId(bookId);
 
         if (histories.isEmpty()) {
@@ -31,7 +30,7 @@ public class UserHistoryService {
                 .map(history -> {
                     Diary diary = history.getDiary();
                     return HistoryContextResponseDto.builder()
-                            .temporaryBookId(history.getBookId())
+                            .bookId(history.getBookId())
                             .emotion(history.getEmotion())
                             .diaryId(diary != null ? diary.getId() : null)
                             .diaryTitle(diary != null ? diary.getTitle() : "일기 없이 감정만 선택한 하루입니다.")
@@ -42,11 +41,11 @@ public class UserHistoryService {
                 .collect(Collectors.toList());
     }
 
-    // 전체 추천 이력 목록 조회 (테스트용)
+    // [테스트 및 관리용] 전체 추천 이력 목록 조회
     public List<HistoryContextResponseDto> getAllHistories() {
         return userHistoryRepository.findAll().stream()
                 .map(history -> HistoryContextResponseDto.builder()
-                        .temporaryBookId(history.getBookId())
+                        .bookId(history.getBookId())
                         .emotion(history.getEmotion())
                         .diaryId(history.getDiary() != null ? history.getDiary().getId() : null)
                         .diaryTitle(history.getDiary() != null ? history.getDiary().getTitle() : "일기 없음")

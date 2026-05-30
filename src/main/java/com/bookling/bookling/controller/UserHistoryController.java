@@ -15,17 +15,15 @@ public class UserHistoryController {
 
     private final UserHistoryService userHistoryService;
 
-    // 모든 추천 이력 목록 조회 (테스트 및 관리자용)
+    // [테스트 및 관리용] 전체 추천 이력 목록 조회
     @GetMapping
     public ResponseEntity<List<HistoryContextResponseDto>> getAllHistories() {
-        List<HistoryContextResponseDto> list = userHistoryService.getAllHistories();
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(userHistoryService.getAllHistories());
     }
 
-    // 특정 도서 ID로 연동된 과거 활동 기록(일기 문맥) 반환 API
-    @GetMapping("/{temporaryBookId}")
-    public ResponseEntity<List<HistoryContextResponseDto>> getHistoryContext(@PathVariable Long temporaryBookId) {
-        List<HistoryContextResponseDto> response = userHistoryService.getContextByBookId(temporaryBookId);
-        return ResponseEntity.ok(response);
+    // 특정 도서 ID 연동 과거 활동 기록(일기 문맥) 반환
+    @GetMapping("/{bookId}")
+    public ResponseEntity<List<HistoryContextResponseDto>> getHistoryContext(@PathVariable Long bookId) {
+        return ResponseEntity.ok(userHistoryService.getContextByBookId(bookId));
     }
 }

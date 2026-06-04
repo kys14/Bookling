@@ -11,16 +11,18 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @EntityListeners(AuditingEntityListener.class)
-
 public class Diary {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 일기 고유 번호
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     private String title;   // 일기 제목
     private String content; // 일기 내용
-
     private String emotion; // 감정 분석 결과
 
     @CreatedDate

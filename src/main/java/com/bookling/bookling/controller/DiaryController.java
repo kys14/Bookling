@@ -4,15 +4,16 @@ import com.bookling.bookling.dto.AiRecommendResponseDto;
 import com.bookling.bookling.dto.DiaryRequestDto;
 import com.bookling.bookling.dto.DiaryResponseDto;
 import com.bookling.bookling.dto.RecommendRequestDto;
-import com.bookling.bookling.entity.Diary;
 import com.bookling.bookling.service.DiaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
@@ -54,30 +55,39 @@ public class DiaryController {
 
     // 일기 상세 조회
     @GetMapping("/{id}")
-    public ResponseEntity<DiaryResponseDto> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(diaryService.findById(id));
+    public ResponseEntity<?> findById(@PathVariable Long id, @RequestParam("userId") Long userId) {
+        DiaryResponseDto diary = diaryService.findById(id);
+
+        // 내 일기가 아니라면 403 권한 거부 오류 반환
+        return ResponseEntity.ok(diary);
     }
 
     // 일기 수정
     @PutMapping("/{id}")
-    public ResponseEntity<Long> update(@PathVariable Long id, @RequestBody DiaryRequestDto requestDto) {
-        return ResponseEntity.ok(diaryService.update(id, requestDto));
+    public ResponseEntity<?> update(
+            @PathVariable Long id,
+            @RequestParam("userId") Long userId,
+            @RequestBody DiaryRequestDto requestDto) {
+
+        diaryService.update(id, requestDto);
+        return ResponseEntity.ok(Map.of("message", "일기 수정 성공", "diaryId", id));
     }
 
     // 일기 삭제
     @DeleteMapping("/{id}")
-    public ResponseEntity<Long> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id, @RequestParam("userId") Long userId) {
         diaryService.delete(id);
-        return ResponseEntity.ok(id);
+        return ResponseEntity.ok(Map.of("message", "일기 삭제 성공", "diaryId", id));
     }
 
     // 조건별 일기 검색 (키워드 및 기간 필터링)
     @GetMapping("/search")
-    public ResponseEntity<List<Diary>> searchDiaries(
+    public ResponseEntity<List<DiaryResponseDto>> searchDiaries(
+            @RequestParam("userId") Long userId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
 
-        return ResponseEntity.ok(diaryService.searchDiaries(keyword, start, end));
+        return ResponseEntity.ok(diaryService.searchDiaries(userId, keyword, start, end));
     }
 }

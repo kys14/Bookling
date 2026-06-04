@@ -24,7 +24,7 @@ public class DiaryService {
     private final UserHistoryRepository userHistoryRepository;
     private final RestTemplate restTemplate;
 
-    // [활동1] 일기 저장 및 AI 분석 기반 추천 도서 적재 (활동 2)
+    // [활동1] 일기 저장 및 AI 분석 기반 추천 도서 적재
     @Transactional
     public AiRecommendResponseDto saveDiaryWithAiAndHistory(RecommendRequestDto dto) {
         User user = userRepository.findById(dto.getUserId())
@@ -45,6 +45,7 @@ public class DiaryService {
             }
 
             Diary diary = new Diary();
+            diary.setUser(user);
             diary.setTitle(dto.getTitle());
             diary.setContent(dto.getContent());
             diary.setEmotion(emotionResult);
@@ -67,6 +68,7 @@ public class DiaryService {
             System.err.println("[AI External Error] 통신 실패로 인한 일반 백업 저장 프로세스 전환: " + e.getMessage());
 
             Diary backupDiary = new Diary();
+            backupDiary.setUser(user); // ★ 백업 시에도 유저 매핑 필수!
             backupDiary.setTitle(dto.getTitle());
             backupDiary.setContent(dto.getContent());
             backupDiary.setEmotion("분석 실패");
@@ -172,16 +174,22 @@ public class DiaryService {
     }
 
     // 조건별 일기 검색
-    public List<Diary> searchDiaries(String keyword, LocalDateTime start, LocalDateTime end) {
+    public List<DiaryResponseDto> searchDiaries(Long userId, String keyword, LocalDateTime start, LocalDateTime end) {
+        List<Diary> diaries;
+
         if (keyword != null && start != null && end != null) {
-            return diaryRepository.findByTitleContainingAndCreatedAtBetween(keyword, start, end);
+            diaries = diaryRepository.findByTitleContainingAndCreatedAtBetween(keyword, start, end);
+        } else if (keyword != null) {
+            diaries = diaryRepository.findByTitleContaining(keyword);
+        } else if (start != null && end != null) {
+            diaries = diaryRepository.findByCreatedAtBetween(start, end);
+        } else {
+            diaries = diaryRepository.findByUserId(userId);
         }
-        if (keyword != null) {
-            return diaryRepository.findByTitleContaining(keyword);
-        }
-        if (start != null && end != null) {
-            return diaryRepository.findByCreatedAtBetween(start, end);
-        }
-        return diaryRepository.findAll();
+
+        return diaries.stream()
+                .filter(diary -> diary.getUser() != null && diary.getUser().getId().equals(userId))
+                .map(DiaryResponseDto::new)
+                .collect(Collectors.toList());
     }
 }

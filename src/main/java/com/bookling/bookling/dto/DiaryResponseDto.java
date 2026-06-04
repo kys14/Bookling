@@ -6,9 +6,10 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 @Getter
-@JsonPropertyOrder({"id", "title", "content", "createdAt"})
+@JsonPropertyOrder({"id", "userId", "title", "content", "createdAt"})
 public class DiaryResponseDto {
     private final Long id;
+    private final Long userId;
     private final String title;
     private final String content;
     private final LocalDateTime createdAt;
@@ -16,6 +17,7 @@ public class DiaryResponseDto {
     // 엔티티를 DTO로 변환
     public DiaryResponseDto(Diary entity) {
         this.id = entity.getId();
+        this.userId = entity.getUser() != null ? entity.getUser().getId() : null;
         this.title = entity.getTitle();
         this.content = entity.getContent();
         this.createdAt = entity.getCreatedAt();

@@ -58,7 +58,13 @@ public class DiaryController {
     public ResponseEntity<?> findById(@PathVariable Long id, @RequestParam("userId") Long userId) {
         DiaryResponseDto diary = diaryService.findById(id);
 
-        // 내 일기가 아니라면 403 권한 거부 오류 반환
+        // 일기 작성자의 ID와 접근하려는 로그인 유저 ID가 불일치할 경우 403 Forbidden 차단
+        if (diary.getUserId() != null && !diary.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "해당 일기를 조회할 권한이 없습니다."
+            ));
+        }
         return ResponseEntity.ok(diary);
     }
 
@@ -69,6 +75,14 @@ public class DiaryController {
             @RequestParam("userId") Long userId,
             @RequestBody DiaryRequestDto requestDto) {
 
+        DiaryResponseDto diary = diaryService.findById(id);
+        if (diary.getUserId() != null && !diary.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "해당 일기를 수정할 권한이 없습니다."
+            ));
+        }
+
         diaryService.update(id, requestDto);
         return ResponseEntity.ok(Map.of("message", "일기 수정 성공", "diaryId", id));
     }
@@ -76,6 +90,14 @@ public class DiaryController {
     // 일기 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, @RequestParam("userId") Long userId) {
+        DiaryResponseDto diary = diaryService.findById(id);
+        if (diary.getUserId() != null && !diary.getUserId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "해당 일기를 삭제할 권한이 없습니다."
+            ));
+        }
+
         diaryService.delete(id);
         return ResponseEntity.ok(Map.of("message", "일기 삭제 성공", "diaryId", id));
     }

@@ -93,7 +93,7 @@ public class DiaryService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다. ID: " + userId));
 
-        String ngrokUrl = "https://wrecking-aptitude-wrongly.ngrok-free.dev/recommend/emotion";
+        String ngrokUrl = "https://wrecking-aptitude-wrongly.ngrok-free.dev/recommend/by-emotion";
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("emotion", emotion);
 

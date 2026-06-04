@@ -54,4 +54,16 @@ public class UserHistoryService {
                         .build())
                 .collect(Collectors.toList());
     }
+
+    // 유저별 마이페이지 서재 필터링
+    public boolean isHistoryOwnedByUser(Long diaryId, Long userId) {
+        if (diaryId == null) {
+            return false;
+        }
+        return userHistoryRepository.findAll().stream()
+                .anyMatch(h -> h.getDiary() != null
+                        && h.getDiary().getId().equals(diaryId)
+                        && h.getUser() != null
+                        && h.getUser().getId().equals(userId));
+    }
 }

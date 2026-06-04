@@ -18,11 +18,8 @@ public class User {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String email;
+    private String deviceUuid;
 
     @Column(nullable = false)
-    private String password;
-
-    @Column(nullable = false)
-    private String nickname;
+    private String name;
 }

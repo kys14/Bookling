@@ -9,6 +9,9 @@ import java.util.List;
 
 @Repository
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
+    // 특정 유저의 ID로 작성된 일기 목록만 조회
+    List<Diary> findByUserId(Long userId);
+
     // 특정 단어 검색
     List<Diary> findByTitleContaining(String keyword);
 

@@ -43,9 +43,12 @@ public class DiaryController {
         return ResponseEntity.ok(response);
     }
 
-    // 전체 일기 목록 조회
+    // 일기 목록 조회
     @GetMapping
-    public ResponseEntity<List<DiaryResponseDto>> findAllDiaries() {
+    public ResponseEntity<List<DiaryResponseDto>> findAllDiaries(@RequestParam(value = "userId", required = false) Long userId) {
+        if (userId != null) {
+            return ResponseEntity.ok(diaryService.findAllByUserId(userId));
+        }
         return ResponseEntity.ok(diaryService.findAll());
     }
 

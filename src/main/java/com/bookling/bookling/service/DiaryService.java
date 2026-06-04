@@ -139,6 +139,13 @@ public class DiaryService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<DiaryResponseDto> findAllByUserId(Long userId) {
+        return diaryRepository.findByUserId(userId).stream()
+                .map(DiaryResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
     // 일기 상세 조회
     public DiaryResponseDto findById(Long id) {
         Diary entity = diaryRepository.findById(id)

@@ -28,8 +28,13 @@ public class UserHistoryController {
 
         // 마이페이지 서재
         List<HistoryContextResponseDto> userHistories = userHistoryService.getAllHistories().stream()
-                .filter(history -> history.getDiaryId() == null ||
-                        userHistoryService.isHistoryOwnedByUser(history.getDiaryId(), userId))
+                .filter(history -> {
+                    if (history.getDiaryId() != null) {
+                        return userHistoryService.isHistoryOwnedByUser(history.getDiaryId(), userId);
+                    } else {
+                        return userHistoryService.isHistoryDirectlyOwnedByUser(history.getBookId(), history.getEmotion(), userId);
+                    }
+                })
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(userHistories);

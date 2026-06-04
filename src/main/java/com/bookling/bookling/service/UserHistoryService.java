@@ -57,13 +57,23 @@ public class UserHistoryService {
 
     // 유저별 마이페이지 서재 필터링
     public boolean isHistoryOwnedByUser(Long diaryId, Long userId) {
-        if (diaryId == null) {
-            return false;
+        // 일기 ID가 들어온 경우
+        if (diaryId != null) {
+            return userHistoryRepository.findAll().stream()
+                    .anyMatch(h -> h.getDiary() != null
+                            && h.getDiary().getId().equals(diaryId)
+                            && h.getUser() != null
+                            && h.getUser().getId().equals(userId));
         }
+        return false;
+    }
+
+    // 감정 히스토리 매핑
+    public boolean isHistoryDirectlyOwnedByUser(Long bookId, String emotion, Long userId) {
         return userHistoryRepository.findAll().stream()
-                .anyMatch(h -> h.getDiary() != null
-                        && h.getDiary().getId().equals(diaryId)
-                        && h.getUser() != null
-                        && h.getUser().getId().equals(userId));
+                .anyMatch(h -> h.getUser() != null && h.getUser().getId().equals(userId)
+                        && h.getDiary() == null // 일기가 없는 순수 감정 히스토리 필터
+                        && h.getEmotion() != null && h.getEmotion().equals(emotion)
+                        && ((h.getBookId() == null && bookId == null) || (h.getBookId() != null && h.getBookId().equals(bookId))));
     }
 }
